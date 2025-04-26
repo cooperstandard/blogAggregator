@@ -3,9 +3,17 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 )
 
-const configFilePath = "./gatorConfig.json"
+func getConfigFilePath() (string, error) {
+	_, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	fullPath := filepath.Join(".", "gatorConfig.json")
+	return fullPath, nil
+}
 
 type Config struct {
 	DBURL           string `json:"db_url`
@@ -18,7 +26,8 @@ func (cfg *Config) SetUser(name string) error {
 }
 
 func write(cfg Config) error {
-	file, err := os.Create(configFilePath)
+	path, _ := getConfigFilePath()
+	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
@@ -33,7 +42,9 @@ func write(cfg Config) error {
 }
 
 func Read() (Config, error) {
-	file, err := os.Open(configFilePath)
+	path, _ := getConfigFilePath()
+
+	file, err := os.Open(path)
 	if err != nil {
 		return Config{}, err
 	}
