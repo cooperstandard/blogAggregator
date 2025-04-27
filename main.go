@@ -1,11 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"log"
 	"os"
 
+	"github.com/cooperstandard/blogAggregator/commands"
 	"github.com/cooperstandard/blogAggregator/internal/config"
+	"github.com/cooperstandard/blogAggregator/internal/database"
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -13,27 +16,37 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	s := state{&cfg}
+	s := commands.State{Config: &cfg}
+	// fmt.Printf("Read config: %+v\n", cfg)
 
-	fmt.Printf("Read config: %+v\n", cfg)
-
-	cmds := commands{
-		handlers: make(map[string]func(s *state, cmd command) error),
+	db, err := sql.Open("postgres", cfg.DBURL)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	cmds.register("login", handleLogin)
+	queries := database.New(db)
+
+	s.DB = queries
+
+	cmds := commands.Commands{
+		Handlers: make(map[string]func(s *commands.State, cmd commands.Command) error),
+	}
+
+	cmds.Register("login", commands.HandleLogin)
+	cmds.Register("register", commands.HandleRegister)
+	cmds.Register("reset", commands.HandleReset)
 
 	arg := os.Args
 
 	if len(arg) < 2 {
 		log.Fatal("atleast 2 arguement must be provided")
 	}
-	cmd := command{
-		name: arg[1],
-		args: arg[2:],
+	cmd := commands.Command{
+		Name: arg[1],
+		Args: arg[2:],
 	}
 
-	err = cmds.run(&s, cmd)
+	err = cmds.Run(&s, cmd)
 	if err != nil {
 		log.Fatal(err)
 	}
