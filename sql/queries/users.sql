@@ -15,6 +15,11 @@ FROM users
 WHERE name = $1
 LIMIT 1;
 
+-- name: GetUserById :one
+SELECT *
+FROM users
+WHERE id = $1;
+
 -- name: Reset :exec
 DELETE FROM users;
 
