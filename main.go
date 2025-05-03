@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"os"
@@ -37,8 +38,10 @@ func main() {
 	cmds.Register("reset", commands.HandleReset)
 	cmds.Register("users", commands.HandleList)
 	cmds.Register("agg", commands.HandleAgg)
-	cmds.Register("addfeed", commands.HandleAddFeed)
+	cmds.Register("addfeed", middlewareAuth(commands.HandleAddFeed))
 	cmds.Register("feeds", commands.HandleFeeds)
+	cmds.Register("follow", middlewareAuth(commands.HandleFollow))
+	cmds.Register("following", middlewareAuth(commands.HandleFollowing))
 
 	arg := os.Args
 
@@ -53,5 +56,15 @@ func main() {
 	err = cmds.Run(&s, cmd)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func middlewareAuth(handler func(s *commands.State, cmd commands.Command, user database.User) error) func(*commands.State, commands.Command) error {
+	return func(s *commands.State, cmd commands.Command) error {
+		user, err := s.DB.GetUser(context.Background(), s.Config.CurrentUserName)
+		if err != nil {
+			return err
+		}
+		return handler(s, cmd, user)
 	}
 }

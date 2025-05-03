@@ -13,7 +13,6 @@ import (
 )
 
 const createFeed = `-- name: CreateFeed :one
-
 INSERT INTO feeds (id, created_at, updated_at, name, url, user_id)
 VALUES (
     $1,
@@ -35,7 +34,6 @@ type CreateFeedParams struct {
 	UserID    uuid.UUID
 }
 
-// WHERE user_id = (SELECT id FROM users WHERE users.name = $1 LIMIT 1);
 func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, error) {
 	row := q.db.QueryRowContext(ctx, createFeed,
 		arg.ID,
@@ -55,6 +53,92 @@ func (q *Queries) CreateFeed(ctx context.Context, arg CreateFeedParams) (Feed, e
 		&i.UserID,
 	)
 	return i, err
+}
+
+const getFeedByURL = `-- name: GetFeedByURL :one
+SELECT id, created_at, updated_at, name, url, user_id
+FROM feeds
+WHERE url = $1
+LIMIT 1
+`
+
+func (q *Queries) GetFeedByURL(ctx context.Context, url string) (Feed, error) {
+	row := q.db.QueryRowContext(ctx, getFeedByURL, url)
+	var i Feed
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Url,
+		&i.UserID,
+	)
+	return i, err
+}
+
+const getFeedFollowsByUser = `-- name: GetFeedFollowsByUser :many
+SELECT ff.id, ff.created_at, ff.updated_at, ff.user_id, feed_id, u.id, u.created_at, u.updated_at, u.name, f.id, f.created_at, f.updated_at, f.name, url, f.user_id
+FROM feed_follows ff
+INNER JOIN users u on ff.user_id = u.id 
+INNER JOIN feeds f on ff.feed_id = f.id
+WHERE ff.user_id = $1
+`
+
+type GetFeedFollowsByUserRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	UserID      uuid.UUID
+	FeedID      uuid.UUID
+	ID_2        uuid.UUID
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
+	Name        string
+	ID_3        uuid.UUID
+	CreatedAt_3 time.Time
+	UpdatedAt_3 time.Time
+	Name_2      string
+	Url         string
+	UserID_2    uuid.UUID
+}
+
+func (q *Queries) GetFeedFollowsByUser(ctx context.Context, userID uuid.UUID) ([]GetFeedFollowsByUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getFeedFollowsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetFeedFollowsByUserRow
+	for rows.Next() {
+		var i GetFeedFollowsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.UserID,
+			&i.FeedID,
+			&i.ID_2,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+			&i.Name,
+			&i.ID_3,
+			&i.CreatedAt_3,
+			&i.UpdatedAt_3,
+			&i.Name_2,
+			&i.Url,
+			&i.UserID_2,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listFeeds = `-- name: ListFeeds :many

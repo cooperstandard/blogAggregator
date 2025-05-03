@@ -10,14 +10,9 @@ import (
 	"github.com/google/uuid"
 )
 
-func HandleAddFeed(s *State, cmd Command) error {
+func HandleAddFeed(s *State, cmd Command, user database.User) error {
 	if len(cmd.Args) < 2 {
 		return errors.New("adding a feed requires 2 arguments")
-	}
-
-	user, err := s.DB.GetUser(context.Background(), s.Config.CurrentUserName)
-	if err != nil {
-		return err
 	}
 
 	params := database.CreateFeedParams{
@@ -29,6 +24,10 @@ func HandleAddFeed(s *State, cmd Command) error {
 		Url:       cmd.Args[1],
 	}
 	feed, err := s.DB.CreateFeed(context.Background(), params)
+	if err != nil {
+		return err
+	}
+	_, err = addFeedFollow(s, user.ID, feed.ID)
 	if err != nil {
 		return err
 	}
