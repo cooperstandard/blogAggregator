@@ -42,6 +42,7 @@ func main() {
 	cmds.Register("feeds", commands.HandleFeeds)
 	cmds.Register("follow", middlewareAuth(commands.HandleFollow))
 	cmds.Register("following", middlewareAuth(commands.HandleFollowing))
+	cmds.Register("unfollow", middlewareAuth(commands.HandleUnfollow))
 
 	arg := os.Args
 
